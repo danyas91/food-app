@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">Android Job Assignment</string>
+    <string name="query_label">Query</string>
+    <string name="clear_label">Clear</string>
+    <string name="search_label">Search</string>
+    <string name="toolbar_title">Food App</string>
+    <string name="not_found">No meals found</string>
+    <string name="error_message">Something went wrong, please check internet connection</string>
 </resources>
