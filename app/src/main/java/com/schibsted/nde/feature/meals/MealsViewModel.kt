@@ -49,6 +49,12 @@ class MealsViewModel @Inject constructor(
             is MealsViewEvent.OnSubmitQuery -> {
                 submitQuery(event.query)
             }
+
+            MealsViewEvent.ErrorSnackBarDismissed -> {
+                viewModelScope.launch {
+                    _state.emit(_state.value.copy(shouldShowError = false))
+                }
+            }
         }
     }
 
@@ -79,7 +85,7 @@ class MealsViewModel @Inject constructor(
                         }
 
                         is Response.Error -> {
-                            _state.emit(_state.value.copy(isLoading = false))
+                            _state.emit(_state.value.copy(isLoading = false, errorType = response.error, shouldShowError = true))
                         }
                     }
                 }

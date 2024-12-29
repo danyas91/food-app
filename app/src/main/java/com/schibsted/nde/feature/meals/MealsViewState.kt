@@ -1,5 +1,6 @@
 package com.schibsted.nde.feature.meals
 
+import com.schibsted.nde.data.model.ErrorType
 import com.schibsted.nde.domain.model.Meal
 
 data class MealsViewState(
@@ -8,5 +9,7 @@ data class MealsViewState(
     val isLoading: Boolean = false,
     val query: String? = null,
     val shouldNavigateToMealDetails: Boolean = false,
-    val clickedMealId: String? = null
+    val clickedMealId: String? = null,
+    val shouldShowError: Boolean = false,
+    val errorType: ErrorType? = null
 )

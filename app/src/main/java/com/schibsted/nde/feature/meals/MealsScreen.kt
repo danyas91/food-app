@@ -35,6 +35,10 @@ import androidx.compose.material.ModalBottomSheetLayout
 import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.OutlinedButton
 import androidx.compose.material.Scaffold
+import androidx.compose.material.Snackbar
+import androidx.compose.material.SnackbarDuration
+import androidx.compose.material.SnackbarHost
+import androidx.compose.material.SnackbarResult
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
 import androidx.compose.material.TopAppBar
@@ -42,6 +46,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,16 +58,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.SwipeRefreshIndicator
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import com.schibsted.nde.R
+import com.schibsted.nde.data.model.ErrorType
 import com.schibsted.nde.domain.model.Meal
 import com.schibsted.nde.feature.common.MealImage
+import com.schibsted.nde.ui.LocalSnackbarHostState
 import com.schibsted.nde.ui.typography
 import kotlinx.coroutines.launch
 
@@ -79,11 +89,27 @@ fun MealsScreen(
     val coroutineScope = rememberCoroutineScope()
     val modalBottomSheetState =
         rememberModalBottomSheetState(initialValue = ModalBottomSheetValue.Hidden)
+    val networkErrorTypeMessage = stringResource(id = R.string.error_message)
 
     LaunchedEffect(state) {
         if (state.shouldNavigateToMealDetails && state.clickedMealId != null) {
             onNavigateToMealDetails(state.clickedMealId)
             onEvent(MealsViewEvent.OnNavigateToMealDetails)
+        }
+    }
+
+    val snackbarHostState = LocalSnackbarHostState.current
+    LaunchedEffect(state.shouldShowError) {
+        if (state.shouldShowError) {
+            coroutineScope.launch {
+                val snackbarResult = snackbarHostState.showSnackbar(
+                    message = networkErrorTypeMessage,
+                    duration = SnackbarDuration.Short
+                )
+                if (snackbarResult == SnackbarResult.Dismissed) {
+                    onEvent(MealsViewEvent.ErrorSnackBarDismissed)
+                }
+            }
         }
     }
 
@@ -102,7 +128,7 @@ fun MealsScreen(
             TextField(
                 value = query,
                 onValueChange = { query = it },
-                label = { Text("Query") },
+                label = { Text(text = stringResource(id = R.string.query_label)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = {
@@ -123,7 +149,7 @@ fun MealsScreen(
                         modalBottomSheetState.hide()
                     }
                 }) {
-                    Text(text = "Clear")
+                    Text(text = stringResource(id = R.string.clear_label))
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Button(onClick = {
@@ -132,35 +158,59 @@ fun MealsScreen(
                         modalBottomSheetState.hide()
                     }
                 }) {
-                    Text(text = "Search")
+                    Text(text = stringResource(id = R.string.search_label))
                 }
             }
         }
     }, sheetState = modalBottomSheetState) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = {
-                        Text("Food App")
-                    },
-                    actions = {
-                        IconButton(onClick = {
-                            coroutineScope.launch {
-                                modalBottomSheetState.show()
+        CompositionLocalProvider(LocalSnackbarHostState provides snackbarHostState) {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = {
+                            Text(text = stringResource(id = R.string.toolbar_title))
+                        },
+                        actions = {
+                            IconButton(onClick = {
+                                coroutineScope.launch {
+                                    modalBottomSheetState.show()
+                                }
+                            }) {
+                                Icon(Icons.Filled.Search, "search")
                             }
-                        }) {
-                            Icon(Icons.Filled.Search, "search")
+                        }
+                    )
+                },
+                content = {
+                    MealsScreenContent(
+                        state = state,
+                        onEvent = { onEvent(it) }
+                    )
+                },
+                snackbarHost = {
+                    SnackbarHost(
+                        hostState = LocalSnackbarHostState.current,
+                    ) {
+                        Snackbar(
+                            modifier = Modifier
+                                .padding(24.dp, 0.dp, 24.dp, 64.dp),
+                            backgroundColor = MaterialTheme.colors.surface
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                            ) {
+                                Text(
+                                    modifier = Modifier.weight(1f),
+                                    text = it.message,
+                                    color = Color.White
+                                )
+                            }
                         }
                     }
-                )
-            },
-            content = {
-                MealsScreenContent(
-                    state = state,
-                    onEvent = { onEvent(it) }
-                )
-            }
-        )
+                },
+            )
+        }
     }
 }
 
@@ -184,7 +234,7 @@ fun MealsScreenContent(
             ) {
                 if (!state.isLoading) {
                     if (state.filteredMeals.isEmpty()) {
-                        Text(text = "No meals found")
+                        Text(text = stringResource(id = R.string.not_found))
                     } else {
                         val orientation = LocalConfiguration.current.orientation
                         if (orientation == Configuration.ORIENTATION_PORTRAIT) {

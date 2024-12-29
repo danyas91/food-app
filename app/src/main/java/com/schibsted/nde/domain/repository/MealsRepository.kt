@@ -6,5 +6,5 @@ import kotlinx.coroutines.flow.Flow
 
 interface MealsRepository {
     suspend fun getAllMeals(): Flow<Response<List<Meal>>>
-    suspend fun getMealById(id: String): Flow<Meal>
+    suspend fun getMealById(mealId: String): Flow<Response<Meal>>
 }

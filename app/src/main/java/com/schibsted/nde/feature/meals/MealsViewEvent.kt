@@ -5,4 +5,5 @@ sealed class MealsViewEvent {
     data class OnSubmitQuery(val query: String?): MealsViewEvent()
     data object LoadMeals : MealsViewEvent()
     data object OnNavigateToMealDetails : MealsViewEvent()
+    data object ErrorSnackBarDismissed : MealsViewEvent()
 }

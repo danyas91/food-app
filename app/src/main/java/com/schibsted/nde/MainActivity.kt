@@ -15,9 +15,12 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.schibsted.nde.feature.mealdetails.MealDetailsScreen
+import com.schibsted.nde.feature.mealdetails.MealDetailsViewModel
 import com.schibsted.nde.feature.meals.MealsScreen
 import com.schibsted.nde.feature.meals.MealsViewModel
 import com.schibsted.nde.ui.AppTheme
+import com.schibsted.nde.ui.LocalSnackbarHostState
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -51,8 +54,25 @@ fun NavGraph(navController: NavHostController) {
                 state = state.value,
                 onEvent = viewModel::onEvent,
                 onNavigateToMealDetails = { mealId ->
-                    // TODO
+                    navController.navigate("mealDetails?mealId=$mealId")
                 }
+            )
+        }
+        composable("mealDetails?mealId={mealId}") {
+            val mealId = navController.currentBackStackEntry?.arguments?.getString(
+                "mealId"
+            ) ?: ""
+            val viewModel = hiltViewModel(
+                creationCallback = { factory: MealDetailsViewModel.MealDetailsViewModelFactory ->
+                    factory.create(
+                        mealId = mealId
+                    )
+                }
+            )
+            val state = viewModel.state.collectAsState()
+            MealDetailsScreen(
+                state = state.value,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

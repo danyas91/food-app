@@ -29,7 +29,7 @@ class MealsRepositoryImpl @Inject constructor(
         emit(Response.Loading(data = meals))
 
         try {
-            val newMeals = backendApi.getMeals().meals.map { it.toMealEntity() }
+            val newMeals = backendApi.getMeals().meals.map      { it.toMealEntity() }
             dao.deleteAllMeals()
             dao.insertMeals(newMeals)
         } catch (e: HttpException) {
@@ -52,7 +52,13 @@ class MealsRepositoryImpl @Inject constructor(
         emit(Response.Success(updatedMeals))
     }
 
-    override suspend fun getMealById(id: String): Flow<Meal> {
-        TODO("Not yet implemented")
+    override suspend fun getMealById(mealId: String): Flow<Response<Meal>> = flow {
+        emit(Response.Loading())
+        try {
+            val meal = dao.getMealById(mealId)
+            emit(Response.Success(meal.first().toMeal()))
+        } catch (e: Exception) {
+            emit(Response.Error(ErrorType.UnknownError))
+        }
     }
 }
