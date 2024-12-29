@@ -1,10 +1,12 @@
 package com.schibsted.nde.feature.meals
 
-import com.schibsted.nde.model.MealResponse
+import com.schibsted.nde.domain.model.Meal
 
 data class MealsViewState(
-    val meals: List<MealResponse> = emptyList(),
-    val filteredMeals: List<MealResponse> = emptyList(),
+    val meals: List<Meal> = emptyList(),
+    val filteredMeals: List<Meal> = emptyList(),
     val isLoading: Boolean = false,
-    val query: String? = null
+    val query: String? = null,
+    val shouldNavigateToMealDetails: Boolean = false,
+    val clickedMealId: String? = null
 )

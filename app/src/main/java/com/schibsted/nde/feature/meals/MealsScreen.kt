@@ -2,8 +2,11 @@ package com.schibsted.nde.feature.meals
 
 import android.annotation.SuppressLint
 import android.content.res.Configuration
+import android.os.Build
+import androidx.annotation.RequiresExtension
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -40,7 +43,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -58,19 +61,31 @@ import androidx.compose.ui.unit.dp
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.SwipeRefreshIndicator
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import com.schibsted.nde.domain.model.Meal
 import com.schibsted.nde.feature.common.MealImage
-import com.schibsted.nde.model.MealResponse
 import com.schibsted.nde.ui.typography
 import kotlinx.coroutines.launch
 
+@RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterialApi::class, ExperimentalComposeUiApi::class)
 @ExperimentalFoundationApi
 @Composable
-fun MealsScreen(viewModel: MealsViewModel) {
+fun MealsScreen(
+    state: MealsViewState,
+    onNavigateToMealDetails: (String) -> Unit,
+    onEvent: (MealsViewEvent) -> Unit
+) {
     val coroutineScope = rememberCoroutineScope()
     val modalBottomSheetState =
         rememberModalBottomSheetState(initialValue = ModalBottomSheetValue.Hidden)
+
+    LaunchedEffect(state) {
+        if (state.shouldNavigateToMealDetails && state.clickedMealId != null) {
+            onNavigateToMealDetails(state.clickedMealId)
+            onEvent(MealsViewEvent.OnNavigateToMealDetails)
+        }
+    }
 
     ModalBottomSheetLayout(sheetContent = {
         val focusManager = LocalFocusManager.current
@@ -91,7 +106,7 @@ fun MealsScreen(viewModel: MealsViewModel) {
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = {
-                    viewModel.submitQuery(query)
+                    onEvent(MealsViewEvent.OnSubmitQuery(query))
                     coroutineScope.launch {
                         modalBottomSheetState.hide()
                     }
@@ -102,7 +117,7 @@ fun MealsScreen(viewModel: MealsViewModel) {
 
             Row(modifier = Modifier.align(Alignment.End)) {
                 OutlinedButton(onClick = {
-                    viewModel.submitQuery(null)
+                    onEvent(MealsViewEvent.OnSubmitQuery(null))
                     query = ""
                     coroutineScope.launch {
                         modalBottomSheetState.hide()
@@ -112,7 +127,7 @@ fun MealsScreen(viewModel: MealsViewModel) {
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Button(onClick = {
-                    viewModel.submitQuery(query)
+                    onEvent(MealsViewEvent.OnSubmitQuery(query))
                     coroutineScope.launch {
                         modalBottomSheetState.hide()
                     }
@@ -140,22 +155,28 @@ fun MealsScreen(viewModel: MealsViewModel) {
                 )
             },
             content = {
-                MealsScreenContent(viewModel)
+                MealsScreenContent(
+                    state = state,
+                    onEvent = { onEvent(it) }
+                )
             }
         )
     }
 }
 
+@RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
 @ExperimentalFoundationApi
 @Composable
-fun MealsScreenContent(viewModel: MealsViewModel) {
-    val state by viewModel.state.collectAsState()
+fun MealsScreenContent(
+    state: MealsViewState,
+    onEvent: (MealsViewEvent) -> Unit
+) {
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column {
             SwipeRefresh(
                 state = rememberSwipeRefreshState(state.isLoading),
-                onRefresh = { viewModel.loadMeals() },
+                onRefresh = { onEvent(MealsViewEvent.LoadMeals) },
                 indicator = { state, trigger -> SwipeRefreshIndicator(state, trigger) },
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
@@ -170,7 +191,13 @@ fun MealsScreenContent(viewModel: MealsViewModel) {
                             LazyColumn(modifier = Modifier.fillMaxSize()) {
                                 items(state.filteredMeals) { meal ->
                                     Divider(thickness = 8.dp)
-                                    MealRowComposable(meal)
+                                    MealRowComposable(meal, onMealClicked = {
+                                        onEvent(
+                                            MealsViewEvent.OnMealItemClicked(
+                                                it
+                                            )
+                                        )
+                                    })
                                 }
                             }
                         } else {
@@ -192,7 +219,13 @@ fun MealsScreenContent(viewModel: MealsViewModel) {
                                             0.dp
                                         )
                                     ) {
-                                        MealRowComposable(meal)
+                                        MealRowComposable(meal, onMealClicked = {
+                                            onEvent(
+                                                MealsViewEvent.OnMealItemClicked(
+                                                    it
+                                                )
+                                            )
+                                        })
                                     }
                                 }
                             }
@@ -205,13 +238,14 @@ fun MealsScreenContent(viewModel: MealsViewModel) {
 }
 
 @Composable
-fun MealRowComposable(meal: MealResponse) {
+fun MealRowComposable(meal: Meal, onMealClicked: (String) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colors.surface)
             .clip(RoundedCornerShape(4.dp))
             .padding(16.dp)
+            .clickable { onMealClicked(meal.idMeal) }
     ) {
         MealImage(meal.strMealThumb, Modifier.size(64.dp))
         Column(
